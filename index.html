@@ -556,6 +556,11 @@ let smoothed   = null;
 // ── Single-note state ─────────────────────────────────────────────────────────
 let revealed  = true;
 let singleDur = 4.0;
+const LISTEN_MS    = 2500;   // single-note listening window after tone plays
+let listenActive   = false;
+let listenStartTs  = 0;
+let singleSamples  = [];     // signed cent deviations during the window
+let listenTimer    = null;
 
 // ── Sequence state ────────────────────────────────────────────────────────────
 let selectedKey   = 'C';
@@ -597,6 +602,7 @@ function setMode(mode) {
   document.getElementById('tabSingle').classList.toggle('active',   mode === 'single');
   document.getElementById('tabSequence').classList.toggle('active', mode === 'sequence');
   if (seqPlaying) stopSeq();
+  cancelListen();
   targetMidi = null; smoothed = null; clearMeter();
   setHint(mode === 'single' ? 'Press "New Note" to begin' : 'Build a sequence, then press Play');
 }
@@ -625,11 +631,80 @@ function playTone(freq, dur) {
 function newNote() {
   const lo = +selFrom.value, hi = +selTo.value;
   if (lo >= hi) { setHint('Set "From" lower than "To"'); return; }
+  cancelListen();
   targetMidi = lo + Math.floor(Math.random() * (hi - lo + 1));
   renderNote(); playTone(midiToFreq(targetMidi), singleDur);
-  setHint('Listen… then sing it!');
+  scheduleListen();
 }
-function replayNote() { if (targetMidi) playTone(midiToFreq(targetMidi), singleDur); }
+function replayNote() {
+  if (!targetMidi) return;
+  cancelListen();
+  playTone(midiToFreq(targetMidi), singleDur);
+  scheduleListen();
+}
+
+// ── Listen-and-evaluate ──────────────────────────────────────────────────────
+function scheduleListen() {
+  setHint('Listen to the note…');
+  // Wait for the played tone to finish, then open the listening window
+  listenTimer = setTimeout(startListen, Math.max(300, singleDur * 1000));
+}
+
+function startListen() {
+  if (appMode !== 'single' || !targetMidi) return;
+  listenActive = true;
+  singleSamples = [];
+  smoothed = null;
+  listenStartTs = performance.now();
+
+  const h = document.getElementById('hint');
+  const tick = () => {
+    if (!listenActive) return;
+    const remaining = Math.max(0, LISTEN_MS - (performance.now() - listenStartTs));
+    h.textContent = `🎤 Sing now…  ${(remaining/1000).toFixed(1)}s`;
+    h.className   = 'hint';
+    if (remaining > 0) requestAnimationFrame(tick);
+    else stopListen();
+  };
+  requestAnimationFrame(tick);
+}
+
+function stopListen() {
+  listenActive = false;
+  clearTimeout(listenTimer); listenTimer = null;
+
+  const h = document.getElementById('hint');
+  if (!singleSamples.length) {
+    h.textContent = '🤫 No voice detected — press Replay or New Note';
+    h.className   = 'hint';
+    return;
+  }
+
+  // Trim outliers — drop top/bottom 10% so a brief slide doesn't ruin the verdict
+  const sorted = [...singleSamples].sort((a,b) => a - b);
+  const trim   = Math.floor(sorted.length * 0.1);
+  const kept   = sorted.slice(trim, sorted.length - trim);
+  const signed = kept.reduce((a,b) => a + b, 0) / kept.length;
+  const abs    = Math.abs(signed);
+
+  let msg, cls = '';
+  if (abs <= 10) {
+    msg = `🎯 In tune!  (${signed >= 0 ? '+' : ''}${Math.round(signed)}¢)`;
+    cls = 'ok';
+  } else if (abs <= 25) {
+    msg = `Close — ${signed > 0 ? 'a touch sharp' : 'a touch flat'} (${signed > 0 ? '+' : ''}${Math.round(signed)}¢)`;
+  } else {
+    msg = `Off — ${signed > 0 ? '↓ sing lower' : '↑ sing higher'} (${signed > 0 ? '+' : ''}${Math.round(signed)}¢)`;
+  }
+  h.textContent = msg;
+  h.className   = 'hint' + (cls ? ' ' + cls : '');
+}
+
+function cancelListen() {
+  listenActive = false;
+  clearTimeout(listenTimer); listenTimer = null;
+  singleSamples = [];
+}
 function renderNote() {
   document.getElementById('noteName').textContent = targetMidi ? midiToName(targetMidi) : '—';
   document.getElementById('noteName').className   = 'note-name' + (revealed ? '' : ' blurred');
@@ -981,6 +1056,11 @@ function pitchLoop() {
         seqResults[seqIndex].samples.push(Math.abs(smoothed));
       }
     }
+
+    // Collect signed pitch samples during single-note listening window
+    if (appMode === 'single' && listenActive) {
+      singleSamples.push(smoothed);
+    }
   } else { clearMeter(); smoothed = null; }
 
   rafId = requestAnimationFrame(pitchLoop);
@@ -1002,7 +1082,8 @@ function updateMeter(cents, freq) {
   sn.className   = 'sung-name ' + cls;
   document.getElementById('sungHz').textContent = freq.toFixed(1) + ' Hz';
 
-  if (appMode === 'sequence' && seqPlaying) return;
+  // Don't overwrite the hint during sequence playback or the single-note listening countdown
+  if ((appMode === 'sequence' && seqPlaying) || listenActive) return;
   const h = document.getElementById('hint');
   if (abs <= 10) { h.textContent = '🎯 Right on!'; h.className = 'hint ok'; }
   else           { h.textContent = cents < 0 ? '↑ Sing higher' : '↓ Sing lower'; h.className = 'hint'; }
