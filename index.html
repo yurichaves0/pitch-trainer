@@ -319,13 +319,7 @@
 
     <!-- Circle of Fifths -->
     <div>
-      <div class="lbl">
-        <span>Key — Circle of Fifths</span>
-        <div style="display:flex;align-items:center;gap:0.4rem">
-          <button class="btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.78rem" onclick="transposeKey(-1)">♭ −½</button>
-          <button class="btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.78rem" onclick="transposeKey(+1)">♯ +½</button>
-        </div>
-      </div>
+      <div class="lbl">Key — Circle of Fifths</div>
       <div class="cof-outer">
         <div class="cof-ring" id="cofRing"></div>
       </div>
@@ -343,6 +337,15 @@
         <button class="scale-tab" onclick="setScaleType('nat_min',this)">Natural Minor</button>
         <button class="scale-tab" onclick="setScaleType('har_min',this)">Harmonic Minor</button>
         <button class="scale-tab" onclick="setScaleType('mel_min',this)">Melodic Minor</button>
+      </div>
+    </div>
+
+    <!-- Half-step transpose -->
+    <div>
+      <div class="lbl">Transpose</div>
+      <div class="scale-type-row">
+        <button class="scale-tab" onclick="transposeKey(-1)">♭ −½</button>
+        <button class="scale-tab" onclick="transposeKey(+1)">♯ +½</button>
       </div>
     </div>
 
