@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pitch Trainer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0d0d14;
+      --surface: #171724;
+      --raised:  #1e1e2e;
+      --border:  #252538;
+      --accent:  #7c6af7;
+      --text:    #d0d0e8;
+      --muted:   #55557a;
+      --green:   #4ade80;
+      --yellow:  #fbbf24;
+      --red:     #f87171;
+    }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100svh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 1.5rem; gap: 1rem;
+    }
+    header { text-align: center; }
+    h1  { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.04em; color: #fff; }
+    .sub{ font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 1.5rem;
+      width: 100%; max-width: 460px;
+      display: flex; flex-direction: column; gap: 1.25rem;
+    }
+    .lbl {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.45rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: var(--bg); border-radius: 0.75rem; padding: 3px; gap: 3px;
+    }
+    .tab {
+      background: transparent; color: var(--muted); border: none;
+      border-radius: 0.6rem; padding: 0.55rem; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .tab.active { background: var(--surface); color: var(--text); }
+
+    /* ── Buttons ── */
+    button {
+      border: none; border-radius: 0.75rem; padding: 0.7rem 1rem;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      transition: filter 0.12s, transform 0.1s; letter-spacing: -0.01em;
+    }
+    button:active { transform: scale(0.96); }
+    button:hover  { filter: brightness(1.12); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; filter: none !important; transform: none !important; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost   { background: var(--raised); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger  { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+    .btn-wide    { width: 100%; }
+    .btn-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+    /* ── Single note ── */
+    select {
+      flex: 1; background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 0.65rem;
+      padding: 0.55rem 0.7rem; font-size: 1rem; font-weight: 600;
+      cursor: pointer; outline: none; appearance: none; text-align: center;
+    }
+    select:focus { border-color: var(--accent); }
+    .range-row { display: flex; align-items: center; gap: 0.6rem; }
+    .arrow { color: var(--muted); font-size: 0.9rem; }
+    .note-box { background: var(--bg); border-radius: 1rem; padding: 1.25rem 1rem; text-align: center; }
+    .note-name {
+      font-size: 6rem; font-weight: 900; color: var(--accent);
+      line-height: 1; letter-spacing: -0.03em; min-height: 6rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: filter 0.3s, opacity 0.3s;
+    }
+    .note-name.blurred { filter: blur(18px); opacity: 0.45; }
+    .note-hz { font-size: 0.82rem; color: var(--muted); margin-top: 0.35rem; }
+
+    /* ── Circle of Fifths ── */
+    .cof-outer {
+      display: flex; align-items: center; justify-content: center; padding: 0.5rem 0;
+    }
+    .cof-ring {
+      position: relative; width: 210px; height: 210px; flex-shrink: 0;
+    }
+    .cof-btn {
+      position: absolute; width: 38px; height: 38px; border-radius: 50%;
+      background: var(--raised); color: var(--muted); border: 1px solid var(--border);
+      font-size: 0.78rem; font-weight: 800; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .cof-btn:hover { color: var(--text); border-color: var(--accent); transform: scale(1.1) !important; }
+    .cof-btn.active   { background: var(--accent); color: #fff; border-color: var(--accent); transform: scale(1.1) !important; }
+    .cof-btn.relative { background: transparent; color: var(--accent); border: 2px solid var(--accent); opacity: 0.55; }
+
+    /* ── Scale type tabs ── */
+    .scale-type-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;
+    }
+    .scale-tab {
+      background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+      border-radius: 0.6rem; padding: 0.45rem 0.5rem; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+      text-align: center;
+    }
+    .scale-tab.active { background: var(--raised); color: var(--text); border-color: var(--accent); }
+    .scale-tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Scale notes (drag source) ── */
+    .scale-notes {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      padding: 0.65rem; background: var(--bg); border-radius: 0.75rem;
+      min-height: 2.8rem;
+    }
+    .scale-chip {
+      background: var(--raised); border: 1px solid var(--border);
+      color: var(--text); border-radius: 0.5rem;
+      padding: 0.3rem 0.55rem; font-size: 0.88rem; font-weight: 700;
+      cursor: grab; user-select: none;
+      display: flex; flex-direction: column; align-items: center; gap: 0.05rem; line-height: 1.1;
+      transition: background 0.12s, border-color 0.12s, transform 0.1s, opacity 0.15s;
+    }
+    .scale-chip .sc-deg { font-size: 0.62rem; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; }
+    .scale-chip:hover  { border-color: var(--accent); transform: translateY(-1px); }
+    .scale-chip:active { cursor: grabbing; }
+    .scale-chip.dragging { opacity: 0.35; }
+
+    /* ── Sequence drop zone ── */
+    .seq-zone {
+      min-height: 3.5rem; padding: 0.6rem; border-radius: 0.75rem;
+      background: var(--bg); border: 2px dashed var(--border);
+      display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .seq-zone.drag-over { border-color: var(--accent); background: rgba(124,106,247,0.07); }
+    .seq-placeholder { font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+    .seq-item {
+      background: var(--raised); border: 1px solid var(--border);
+      color: var(--text); border-radius: 0.5rem;
+      padding: 0.35rem 0.2rem 0.35rem 0.65rem;
+      font-size: 0.88rem; font-weight: 700;
+      display: flex; align-items: center; gap: 0.25rem;
+      cursor: grab; user-select: none;
+      transition: background 0.12s, border-color 0.12s, transform 0.15s;
+      position: relative;
+    }
+    .seq-item:active { cursor: grabbing; }
+    .seq-item.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+      transform: scale(1.08);
+    }
+    .seq-item.done { opacity: 0.4; }
+    .seq-item.drag-over-left  { border-left:  2px solid var(--accent); }
+    .seq-item.drag-over-right { border-right: 2px solid var(--accent); }
+    .seq-x {
+      background: none; border: none; color: var(--muted);
+      font-size: 0.85rem; padding: 0 0.3rem; cursor: pointer;
+      border-radius: 3px; font-weight: 700; line-height: 1;
+      transition: color 0.1s; transform: none !important; filter: none !important;
+    }
+    .seq-x:hover { color: var(--red); }
+    .note-prog { height: 3px; background: rgba(255,255,255,0.3); border-radius: 999px; margin-top: 3px; }
+    .note-prog-bar { height: 100%; background: #fff; border-radius: 999px; }
+
+    /* ── Results card ── */
+    .results-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 0.85rem; padding: 0.9rem;
+      display: flex; flex-direction: column; gap: 0.85rem;
+    }
+    .results-top {
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    }
+    .score-big { font-size: 2.2rem; font-weight: 900; line-height: 1; color: #fff; }
+    .score-big.g { color: var(--green); }
+    .score-big.y { color: var(--yellow); }
+    .score-big.r { color: var(--red); }
+    .score-grade { font-size: 0.78rem; font-weight: 700; color: var(--muted); margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .results-stats { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.95rem; font-weight: 800; color: var(--text); text-align: right; }
+    .results-stats .stat-lbl { font-size: 0.65rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-left: 0.2rem; }
+    .results-notes { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .res-chip {
+      padding: 0.3rem 0.5rem; border-radius: 0.5rem;
+      font-size: 0.78rem; font-weight: 700; line-height: 1.1;
+      display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+      min-width: 2.6rem;
+    }
+    .res-chip .rc-cents { font-size: 0.65rem; font-weight: 600; opacity: 0.85; }
+    .res-chip.g { background: rgba(74,222,128,0.15); color: var(--green);  border: 1px solid rgba(74,222,128,0.4);  }
+    .res-chip.y { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.4);  }
+    .res-chip.r { background: rgba(248,113,113,0.15); color: var(--red);   border: 1px solid rgba(248,113,113,0.4); }
+    .res-chip.n { background: var(--raised); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Duration slider ── */
+    .slider-row { display: flex; align-items: center; gap: 0.75rem; }
+    .slider-val { font-size: 0.88rem; font-weight: 700; color: var(--text); min-width: 2.8ch; text-align: right; }
+    input[type=range] {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 6px; border-radius: 999px; background: var(--bg);
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--accent); cursor: pointer;
+      border: 2px solid var(--surface);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--accent); cursor: pointer; border: 2px solid var(--surface);
+    }
+
+    /* ── Mic / vol ── */
+    .mic-status {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.45rem; font-size: 0.75rem; color: var(--muted);
+    }
+    .mic-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .mic-dot.live  { background: var(--green); box-shadow: 0 0 6px rgba(74,222,128,0.6); animation: blink 2s infinite; }
+    .mic-dot.error { background: var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .vol-wrap { height: 5px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+    .vol-bar  { height: 100%; width: 0%; border-radius: 999px; transition: width 0.05s ease-out; }
+
+    /* ── Pitch meter ── */
+    .meter-labels { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted); margin-bottom: 0.4rem; }
+    .meter-track  { position: relative; height: 12px; background: var(--bg); border-radius: 999px; }
+    .meter-green-zone { position: absolute; inset: 0; left: 40%; right: 40%; background: rgba(74,222,128,0.12); border-radius: 999px; }
+    .meter-center { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; background: var(--border); transform: translateX(-50%); }
+    .needle {
+      position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--accent);
+      transform: translate(-50%,-50%);
+      transition: left 0.25s ease-out, background 0.4s, box-shadow 0.4s;
+      opacity: 0; pointer-events: none;
+    }
+    .needle.vis   { opacity: 1; }
+    .needle.vis.g { background: var(--green);  box-shadow: 0 0 10px rgba(74,222,128,0.55); }
+    .needle.vis.y { background: var(--yellow); box-shadow: 0 0 10px rgba(251,191,36,0.45); }
+    .needle.vis.r { background: var(--red);    box-shadow: 0 0 10px rgba(248,113,113,0.45); }
+    .sung-row { display: flex; flex-direction: column; align-items: center; margin: 0.75rem 0 0.25rem; gap: 0.1rem; }
+    .sung-name {
+      font-size: 3.5rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em;
+      color: var(--muted); transition: color 0.2s; min-height: 3.5rem;
+      display: flex; align-items: center;
+    }
+    .sung-name.g { color: var(--green); }
+    .sung-name.y { color: var(--yellow); }
+    .sung-name.r { color: var(--red); }
+    .sung-hz   { font-size: 0.75rem; color: var(--muted); min-height: 1rem; }
+    .feedback-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.6rem; }
+    .cents-val { font-size: 1.45rem; font-weight: 800; color: var(--muted); min-width: 7ch; letter-spacing: -0.02em; }
+    .cents-val.g { color: var(--green); }
+    .cents-val.y { color: var(--yellow); }
+    .cents-val.r { color: var(--red); }
+    .hint    { text-align: center; font-size: 0.8rem; color: var(--muted); min-height: 1.1rem; transition: color 0.2s; }
+    .hint.ok { color: var(--green); }
+
+  </style>
+</head>
+<body>
+
+
+<header>
+  <h1>Pitch Trainer</h1>
+  <p class="sub">Play a note · listen · match it with your voice</p>
+</header>
+
+<div class="card">
+
+  <!-- Mode tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tabSingle"   onclick="setMode('single')">Single Note</button>
+    <button class="tab"        id="tabSequence" onclick="setMode('sequence')">Scale Sequence</button>
+  </div>
+
+  <!-- ════ SINGLE NOTE ════ -->
+  <div id="singleSection">
+    <div>
+      <div class="lbl">Note Range</div>
+      <div class="range-row">
+        <select id="selFrom"></select>
+        <span class="arrow">→</span>
+        <select id="selTo"></select>
+      </div>
+    </div>
+    <div class="note-box">
+      <div class="note-name" id="noteName">—</div>
+      <div class="note-hz"   id="noteHz">Press "New Note" to start</div>
+    </div>
+    <div class="btn-grid">
+      <button class="btn-primary" onclick="newNote()">▶ New Note</button>
+      <button class="btn-ghost"   id="replayBtn" onclick="replayNote()" disabled>↺ Replay</button>
+      <button class="btn-ghost" id="revealBtn" onclick="toggleReveal()" style="grid-column:1/-1">Hide Note</button>
+    </div>
+    <div>
+      <div class="lbl">Note Duration <span id="singleDurLabel" style="color:var(--text);text-transform:none;letter-spacing:0">4.0s</span></div>
+      <div class="slider-row">
+        <input type="range" id="singleDurSlider" min="0.1" max="4" step="0.1" value="4"
+               oninput="document.getElementById('singleDurLabel').textContent=(+this.value).toFixed(1)+'s'; singleDur=+this.value">
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SEQUENCE ════ -->
+  <div id="seqSection" style="display:none;flex-direction:column;gap:1.25rem">
+
+    <!-- Circle of Fifths -->
+    <div>
+      <div class="lbl">
+        <span>Key — Circle of Fifths</span>
+        <div style="display:flex;align-items:center;gap:0.4rem">
+          <button class="btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.78rem" onclick="transposeKey(-1)">♭ −½</button>
+          <button class="btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.78rem" onclick="transposeKey(+1)">♯ +½</button>
+        </div>
+      </div>
+      <div class="cof-outer">
+        <div class="cof-ring" id="cofRing"></div>
+      </div>
+      <div style="display:flex;gap:1.2rem;font-size:0.68rem;color:var(--muted);margin-top:0.4rem;justify-content:center">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent);vertical-align:middle;margin-right:3px"></span>Root</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;border:2px solid var(--accent);vertical-align:middle;margin-right:3px;opacity:0.7"></span>Relative <span id="relKeyLabel"></span></span>
+      </div>
+    </div>
+
+    <!-- Scale type -->
+    <div>
+      <div class="lbl">Scale</div>
+      <div class="scale-type-row" id="scaleTypeBtns">
+        <button class="scale-tab active" onclick="setScaleType('major',this)">Major</button>
+        <button class="scale-tab" onclick="setScaleType('nat_min',this)">Natural Minor</button>
+        <button class="scale-tab" onclick="setScaleType('har_min',this)">Harmonic Minor</button>
+        <button class="scale-tab" onclick="setScaleType('mel_min',this)">Melodic Minor</button>
+      </div>
+    </div>
+
+    <!-- Scale octave + notes -->
+    <div>
+      <div class="lbl">
+        <span>Scale Notes <span id="scaleLabel" style="color:var(--text);text-transform:none;letter-spacing:0;font-weight:800"></span></span>
+      </div>
+      <div class="scale-notes" id="scaleNotes"></div>
+    </div>
+
+    <!-- Sequence drop zone -->
+    <div>
+      <div class="lbl">
+        <span>Sequence</span>
+        <button class="btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.78rem;color:var(--red)" onclick="clearSeq()">Clear</button>
+      </div>
+      <div class="seq-zone" id="seqZone"
+           ondragover="onZoneDragOver(event)"
+           ondrop="onZoneDrop(event)"
+           ondragleave="onZoneDragLeave(event)">
+        <span class="seq-placeholder" id="seqPlaceholder">Drag notes here to build your sequence</span>
+      </div>
+    </div>
+
+    <!-- Duration slider -->
+    <div>
+      <div class="lbl">Note Duration <span id="seqDurLabel" style="color:var(--text);text-transform:none;letter-spacing:0">2.0s</span></div>
+      <div class="slider-row">
+        <input type="range" id="seqDurSlider" min="0.1" max="4" step="0.1" value="2"
+               oninput="document.getElementById('seqDurLabel').textContent=(+this.value).toFixed(1)+'s'; seqDur=+this.value">
+      </div>
+    </div>
+
+    <!-- Play -->
+    <button class="btn-primary btn-wide" id="seqPlayBtn" onclick="toggleSeq()">▶ Play Sequence</button>
+
+    <!-- Results -->
+    <div id="seqResults" style="display:none">
+      <div class="lbl">
+        <span>Last Run — Pitch Accuracy</span>
+        <button class="btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.78rem" onclick="hideResults()">Clear</button>
+      </div>
+      <div class="results-card">
+        <div class="results-top">
+          <div>
+            <div class="score-big" id="resultScore">—</div>
+            <div class="score-grade" id="resultGrade">—</div>
+          </div>
+          <div class="results-stats">
+            <div><span id="resultAvg">—</span> <span class="stat-lbl">avg deviation</span></div>
+            <div><span id="resultInTune">—</span> <span class="stat-lbl">notes hit</span></div>
+          </div>
+        </div>
+        <div class="results-notes" id="resultNotes"></div>
+      </div>
+    </div>
+
+  </div><!-- /seqSection -->
+
+  <!-- ════ SHARED MIC + METER ════ -->
+  <div class="mic-status">
+    <div class="mic-dot" id="micDot"></div>
+    <span id="micStatusText">Waiting for microphone…</span>
+  </div>
+  <div class="vol-wrap" id="volWrap" style="display:none">
+    <div class="vol-bar" id="volBar"></div>
+  </div>
+
+  <div>
+    <div class="lbl" style="display:block">Pitch Meter</div>
+    <div class="meter-labels"><span>♭ Flat</span><span>± 10¢</span><span>Sharp ♯</span></div>
+    <div class="meter-track">
+      <div class="meter-green-zone"></div>
+      <div class="meter-center"></div>
+      <div class="needle" id="needle"></div>
+    </div>
+    <div class="sung-row">
+      <div class="sung-name" id="sungName">—</div>
+      <div class="sung-hz"   id="sungHz"></div>
+    </div>
+    <div class="feedback-row">
+      <div class="cents-val" id="centsVal">—</div>
+    </div>
+    <div class="hint" id="hint">Allow microphone to begin</div>
+  </div>
+
+</div><!-- /card -->
+
+<script>
+'use strict';
+
+// ── Note helpers ──────────────────────────────────────────────────────────────
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const midiToFreq = m => 440 * 2 ** ((m - 69) / 12);
+const freqToMidi = f => 12 * Math.log2(f / 440) + 69;
+const midiToName = m => NOTES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+const cMidi      = o => (o + 1) * 12;
+
+// ── Scale intervals (for MIDI computation) ────────────────────────────────────
+const SCALE_STEPS = {
+  major:   [0,2,4,5,7,9,11],
+  nat_min: [0,2,3,5,7,8,10],
+  har_min: [0,2,3,5,7,8,11],
+  mel_min: [0,2,3,5,7,9,11],
+};
+const SCALE_LABEL = {
+  major:'Major', nat_min:'Natural Minor', har_min:'Harmonic Minor', mel_min:'Melodic Minor'
+};
+
+// ── Proper diatonic note names for every key × scale type ────────────────────
+// Each array has 7 note letter names (no octave); MIDI pitch comes from intervals.
+const ALL_SCALES = {
+  C:  { major:['C','D','E','F','G','A','B'],          nat_min:['C','D','Eb','F','G','Ab','Bb'],      har_min:['C','D','Eb','F','G','Ab','B'],       mel_min:['C','D','Eb','F','G','A','B']        },
+  G:  { major:['G','A','B','C','D','E','F#'],         nat_min:['G','A','Bb','C','D','Eb','F'],        har_min:['G','A','Bb','C','D','Eb','F#'],      mel_min:['G','A','Bb','C','D','E','F#']       },
+  D:  { major:['D','E','F#','G','A','B','C#'],        nat_min:['D','E','F','G','A','Bb','C'],         har_min:['D','E','F','G','A','Bb','C#'],       mel_min:['D','E','F','G','A','B','C#']        },
+  A:  { major:['A','B','C#','D','E','F#','G#'],       nat_min:['A','B','C','D','E','F','G'],          har_min:['A','B','C','D','E','F','G#'],        mel_min:['A','B','C','D','E','F#','G#']       },
+  E:  { major:['E','F#','G#','A','B','C#','D#'],      nat_min:['E','F#','G','A','B','C','D'],         har_min:['E','F#','G','A','B','C','D#'],       mel_min:['E','F#','G','A','B','C#','D#']      },
+  B:  { major:['B','C#','D#','E','F#','G#','A#'],     nat_min:['B','C#','D','E','F#','G','A'],        har_min:['B','C#','D','E','F#','G','A#'],      mel_min:['B','C#','D','E','F#','G#','A#']     },
+ 'F#':{ major:['F#','G#','A#','B','C#','D#','E#'],   nat_min:['F#','G#','A','B','C#','D','E'],       har_min:['F#','G#','A','B','C#','D','E#'],     mel_min:['F#','G#','A','B','C#','D#','E#']    },
+  Db: { major:['Db','Eb','F','Gb','Ab','Bb','C'],     nat_min:['C#','D#','E','F#','G#','A','B'],      har_min:['C#','D#','E','F#','G#','A','B#'],    mel_min:['C#','D#','E','F#','G#','A#','B#']   },
+  Ab: { major:['Ab','Bb','C','Db','Eb','F','G'],      nat_min:['Ab','Bb','Cb','Db','Eb','Fb','Gb'],   har_min:['Ab','Bb','Cb','Db','Eb','Fb','G'],   mel_min:['Ab','Bb','Cb','Db','Eb','F','G']    },
+  Eb: { major:['Eb','F','G','Ab','Bb','C','D'],       nat_min:['Eb','F','Gb','Ab','Bb','Cb','Db'],    har_min:['Eb','F','Gb','Ab','Bb','Cb','D'],    mel_min:['Eb','F','Gb','Ab','Bb','C','D']     },
+  Bb: { major:['Bb','C','D','Eb','F','G','A'],        nat_min:['Bb','C','Db','Eb','F','Gb','Ab'],     har_min:['Bb','C','Db','Eb','F','Gb','A'],     mel_min:['Bb','C','Db','Eb','F','G','A']      },
+  F:  { major:['F','G','A','Bb','C','D','E'],         nat_min:['F','G','Ab','Bb','C','Db','Eb'],      har_min:['F','G','Ab','Bb','C','Db','E'],      mel_min:['F','G','Ab','Bb','C','D','E']       },
+};
+
+// Convert a letter-name (e.g. 'Bb', 'F#', 'Cb') to semitone 0-11 within its octave
+function letterToST(name) {
+  const base = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  let st = base[name[0]];
+  for (let i = 1; i < name.length; i++) st += (name[i] === '#' ? 1 : -1);
+  return st;
+}
+
+// Root letter-name → MIDI for a given octave
+function rootToMidi(key, octave) {
+  return (octave + 1) * 12 + letterToST(key);
+}
+
+// Build array of {displayName, midi} for the current key/octave/scaleType
+function buildScaleNotes(key, octave, type) {
+  const names    = ALL_SCALES[key][type];           // diatonic letter names
+  const steps    = SCALE_STEPS[type];               // semitone offsets from root
+  const rootMidi = rootToMidi(key, octave);
+  const notes = names.map((name, i) => ({ displayName: name, midi: rootMidi + steps[i] }));
+  notes.push({ displayName: names[0], midi: rootMidi + 12 }); // octave above root
+  return notes;
+}
+
+// ── Circle of Fifths ──────────────────────────────────────────────────────────
+const COF_KEYS      = ['C','G','D','A','E','B','F#','Db','Ab','Eb','Bb','F'];
+const CHROMATIC_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+// Semitone value of each key (C=0 … B=11)
+const KEY_ST   = {C:0,G:7,D:2,A:9,E:4,B:11,'F#':6,Db:1,Ab:8,Eb:3,Bb:10,F:5};
+// Inverse: semitone → key name (COF spelling)
+const ST_KEY   = Object.fromEntries(Object.entries(KEY_ST).map(([k,v])=>[v,k]));
+
+// Relative key: major → rel. minor (−3 st); any minor → rel. major (+3 st)
+function getRelativeKey(key, type) {
+  const st = KEY_ST[key];
+  const relST = type === 'major' ? ((st - 3 + 12) % 12) : ((st + 3) % 12);
+  return ST_KEY[relST]; // may be undefined if no COF entry (shouldn't happen)
+}
+
+// Highlight root (active) + relative key (relative) on the COF
+function renderCofHighlights() {
+  const relKey = getRelativeKey(selectedKey, scaleType);
+  document.querySelectorAll('.cof-btn').forEach(b => b.classList.remove('active', 'relative'));
+  document.getElementById('cof-' + selectedKey.replace('#','s')).classList.add('active');
+  if (relKey) {
+    document.getElementById('cof-' + relKey.replace('#','s')).classList.add('relative');
+    const isMajor = scaleType === 'major';
+    document.getElementById('relKeyLabel').textContent =
+      relKey + ' ' + (isMajor ? 'minor' : 'major');
+  }
+}
+
+(function buildCof() {
+  const ring = document.getElementById('cofRing');
+  const cx = 105, cy = 105, r = 82;
+  COF_KEYS.forEach((key, i) => {
+    const angle = -Math.PI / 2 + (i * Math.PI * 2 / 12);
+    const x = cx + r * Math.cos(angle) - 19;
+    const y = cy + r * Math.sin(angle) - 19;
+    const btn = document.createElement('button');
+    btn.className = 'cof-btn' + (key === 'C' ? ' active' : '');
+    btn.id        = 'cof-' + key.replace('#','s');
+    btn.textContent = key;
+    btn.style.left = x + 'px';
+    btn.style.top  = y + 'px';
+    btn.onclick = () => selectKey(key);
+    ring.appendChild(btn);
+  });
+})();
+
+// ── Shared state ──────────────────────────────────────────────────────────────
+let appMode   = 'single';
+let targetMidi = null;
+let audioCtx   = null;
+let micStream  = null;
+let analyser   = null;
+let rafId      = null;
+let micOn      = false;
+let smoothed   = null;
+
+// ── Single-note state ─────────────────────────────────────────────────────────
+let revealed  = true;
+let singleDur = 4.0;
+
+// ── Sequence state ────────────────────────────────────────────────────────────
+let selectedKey   = 'C';
+let scaleType     = 'major';
+let scaleOctave   = 4;
+let seqList       = [];   // array of { displayName, midi }
+let seqDur        = 2.0;
+let seqPlaying    = false;
+let seqIndex      = 0;
+let seqTimer      = null;
+let seqResults    = [];   // per-note: { note, samples: [absCents…] }
+let noteStartTs   = 0;    // performance.now() when current note started
+
+// drag state
+let dragSrc = null; // { type:'scale'|'seq', midi?, idx? }
+
+// ── Single note setup ─────────────────────────────────────────────────────────
+const selFrom = document.getElementById('selFrom');
+const selTo   = document.getElementById('selTo');
+for (let o = 1; o <= 6; o++) selFrom.add(new Option(`C${o}`, cMidi(o)));
+for (let o = 2; o <= 7; o++) selTo.add(new Option(`C${o}`, cMidi(o)));
+selFrom.value = String(cMidi(3));
+selTo.value   = String(cMidi(5));
+selFrom.addEventListener('change', () => { if (+selFrom.value >= +selTo.value) selTo.value = String(+selFrom.value + 12); });
+selTo.addEventListener('change',   () => { if (+selTo.value <= +selFrom.value) selFrom.value = String(+selTo.value - 12); });
+
+// ── Audio context ─────────────────────────────────────────────────────────────
+function getAC() {
+  if (!audioCtx) audioCtx = new AudioContext();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+function setMode(mode) {
+  appMode = mode;
+  document.getElementById('singleSection').style.display = mode === 'single'   ? '' : 'none';
+  document.getElementById('seqSection').style.display    = mode === 'sequence' ? 'flex' : 'none';
+  document.getElementById('tabSingle').classList.toggle('active',   mode === 'single');
+  document.getElementById('tabSequence').classList.toggle('active', mode === 'sequence');
+  if (seqPlaying) stopSeq();
+  targetMidi = null; smoothed = null; clearMeter();
+  setHint(mode === 'single' ? 'Press "New Note" to begin' : 'Build a sequence, then press Play');
+}
+
+// ── Piano tone ────────────────────────────────────────────────────────────────
+function playTone(freq, dur) {
+  const ac = getAC(), t = ac.currentTime;
+  const out = ac.createGain();
+  out.gain.setValueAtTime(1, t);
+  out.connect(ac.destination);
+  [[1,.70,1.00],[2,.35,.70],[3,.20,.55],[4,.10,.42],[5,.05,.32],[6,.03,.24],[7,.02,.18]]
+    .forEach(([ratio, amp, df]) => {
+      const osc = ac.createOscillator(), g = ac.createGain();
+      osc.connect(g); g.connect(out);
+      osc.type = 'sine'; osc.frequency.value = freq * ratio;
+      const decay = Math.max(0.15, dur * df);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(amp, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(amp * 0.4, t + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      osc.start(t); osc.stop(t + decay + 0.05);
+    });
+}
+
+// ── Single note ───────────────────────────────────────────────────────────────
+function newNote() {
+  const lo = +selFrom.value, hi = +selTo.value;
+  if (lo >= hi) { setHint('Set "From" lower than "To"'); return; }
+  targetMidi = lo + Math.floor(Math.random() * (hi - lo + 1));
+  renderNote(); playTone(midiToFreq(targetMidi), singleDur);
+  setHint('Listen… then sing it!');
+}
+function replayNote() { if (targetMidi) playTone(midiToFreq(targetMidi), singleDur); }
+function renderNote() {
+  document.getElementById('noteName').textContent = targetMidi ? midiToName(targetMidi) : '—';
+  document.getElementById('noteName').className   = 'note-name' + (revealed ? '' : ' blurred');
+  document.getElementById('noteHz').textContent   = targetMidi ? midiToFreq(targetMidi).toFixed(2)+' Hz' : 'Press "New Note" to start';
+  document.getElementById('replayBtn').disabled   = !targetMidi;
+}
+function toggleReveal() {
+  revealed = !revealed;
+  document.getElementById('revealBtn').textContent = revealed ? 'Hide Note' : 'Show Note';
+  renderNote();
+}
+
+// ── Circle of fifths / scale ──────────────────────────────────────────────────
+// Shared core: change to newKey, shifting every sequence note by `delta` semitones
+// and re-spelling using the new key's diatonic names.
+function applyKeyChange(newKey, delta) {
+  const newNames = ALL_SCALES[newKey][scaleType];
+  const newSteps = SCALE_STEPS[scaleType];
+  const rootST   = letterToST(newKey);
+  const pcMap    = {};
+  newNames.forEach((name, i) => {
+    const pc = ((rootST + newSteps[i]) % 12 + 12) % 12;
+    pcMap[pc] = name;
+  });
+
+  seqList = seqList.map(note => {
+    const newMidi = note.midi + delta;
+    const pc      = ((newMidi % 12) + 12) % 12;
+    return { displayName: pcMap[pc] !== undefined ? pcMap[pc] : midiToName(newMidi), midi: newMidi };
+  });
+
+  selectedKey = newKey;
+  renderCofHighlights();
+  renderScaleNotes();
+  renderSeqZone();
+}
+
+function selectKey(key) {
+  if (key === selectedKey) return;
+  // Shortest-distance delta: range −5…+6 semitones
+  const deltaUp = ((KEY_ST[key] - KEY_ST[selectedKey]) % 12 + 12) % 12;
+  const delta   = deltaUp <= 6 ? deltaUp : deltaUp - 12;
+  applyKeyChange(key, delta);
+}
+
+function setScaleType(type, btn) {
+  scaleType = type;
+  document.querySelectorAll('.scale-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCofHighlights();
+  renderScaleNotes();
+}
+
+function changeOctave(d) {
+  scaleOctave = Math.max(1, Math.min(6, scaleOctave + d));
+  document.getElementById('octLabel').textContent = scaleOctave;
+  renderScaleNotes();
+}
+
+function transposeKey(delta) {
+  const idx    = CHROMATIC_KEYS.indexOf(selectedKey);
+  const newKey = CHROMATIC_KEYS[(idx + delta + 12) % 12];
+  applyKeyChange(newKey, delta);
+}
+
+function renderScaleNotes() {
+  const notes = buildScaleNotes(selectedKey, scaleOctave, scaleType);
+  document.getElementById('scaleLabel').textContent = selectedKey + ' ' + SCALE_LABEL[scaleType];
+
+  const container = document.getElementById('scaleNotes');
+  container.innerHTML = '';
+  notes.forEach((note, i) => {
+    const chip = document.createElement('div');
+    chip.className   = 'scale-chip';
+    // Degree label: 1..7 then 8 for the octave-above-root (last item)
+    const degree = i === notes.length - 1 ? 8 : i + 1;
+    chip.innerHTML = `<div>${note.displayName}</div><div class="sc-deg">${degree}</div>`;
+    chip.draggable   = true;
+    chip.addEventListener('dragstart', e => {
+      dragSrc = { type: 'scale', note };
+      chip.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    chip.addEventListener('click', () => { seqList.push(note); renderSeqZone(); });
+    container.appendChild(chip);
+  });
+}
+
+// ── Sequence zone ─────────────────────────────────────────────────────────────
+function renderSeqZone() {
+  const zone = document.getElementById('seqZone');
+  const ph   = document.getElementById('seqPlaceholder');
+  ph.style.display = seqList.length ? 'none' : '';
+
+  // Remove existing seq-items
+  zone.querySelectorAll('.seq-item').forEach(e => e.remove());
+
+  seqList.forEach((note, idx) => {
+    const item = document.createElement('div');
+    item.className = 'seq-item';
+    item.id        = 'sq' + idx;
+    item.draggable = true;
+    item.innerHTML = `<span>${note.displayName}</span><button class="seq-x" onclick="removeSeqItem(${idx})">×</button>`;
+
+    // Drag to reorder
+    item.addEventListener('dragstart', e => {
+      dragSrc = { type: 'seq', idx };
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      const half = item.getBoundingClientRect().width / 2;
+      const side = e.offsetX < half ? 'left' : 'right';
+      item.className = 'seq-item drag-over-' + side;
+    });
+    item.addEventListener('dragleave', () => item.className = 'seq-item');
+    item.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      const half = item.getBoundingClientRect().width / 2;
+      const insertAfter = e.offsetX >= half;
+      handleSeqDrop(idx, insertAfter);
+      item.className = 'seq-item';
+    });
+
+    zone.appendChild(item);
+  });
+}
+
+function removeSeqItem(idx) {
+  seqList.splice(idx, 1);
+  renderSeqZone();
+}
+function clearSeq() {
+  if (seqPlaying) stopSeq();
+  seqList = [];
+  renderSeqZone();
+}
+
+// Zone-level drag events (drop on empty space = append)
+function onZoneDragOver(e) {
+  e.preventDefault();
+  document.getElementById('seqZone').classList.add('drag-over');
+}
+function onZoneDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget))
+    document.getElementById('seqZone').classList.remove('drag-over');
+}
+function onZoneDrop(e) {
+  e.preventDefault();
+  document.getElementById('seqZone').classList.remove('drag-over');
+  handleSeqDrop(seqList.length, false); // append
+}
+
+function handleSeqDrop(targetIdx, insertAfter) {
+  if (!dragSrc) return;
+  const insertAt = insertAfter ? targetIdx + 1 : targetIdx;
+  if (dragSrc.type === 'scale') {
+    seqList.splice(insertAt, 0, dragSrc.note);
+  } else if (dragSrc.type === 'seq') {
+    const src = dragSrc.idx;
+    if (src === targetIdx) return;
+    const [note] = seqList.splice(src, 1);
+    const adj = src < insertAt ? insertAt - 1 : insertAt;
+    seqList.splice(adj, 0, note);
+  }
+  dragSrc = null;
+  renderSeqZone();
+}
+
+// ── Sequence playback ─────────────────────────────────────────────────────────
+function toggleSeq() {
+  seqPlaying ? stopSeq() : startSeq();
+}
+function startSeq() {
+  if (seqList.length < 1) { setHint('Add at least one note to the sequence'); return; }
+  seqPlaying = true; seqIndex = 0; seqResults = [];
+  hideResults();
+  document.getElementById('seqPlayBtn').textContent = '■ Stop';
+  document.getElementById('seqPlayBtn').className   = 'btn-danger btn-wide';
+  playSeqStep();
+}
+function stopSeq() {
+  seqPlaying = false; clearTimeout(seqTimer); seqTimer = null;
+  targetMidi = null; smoothed = null;
+  document.getElementById('seqPlayBtn').textContent = '▶ Play Sequence';
+  document.getElementById('seqPlayBtn').className   = 'btn-primary btn-wide';
+  document.querySelectorAll('.seq-item').forEach(el => el.className = 'seq-item');
+  clearMeter(); setHint('Sequence stopped');
+}
+function playSeqStep() {
+  if (!seqPlaying) return;
+  if (seqIndex >= seqList.length) {
+    seqPlaying = false; clearTimeout(seqTimer); seqTimer = null;
+    targetMidi = null; smoothed = null;
+    document.getElementById('seqPlayBtn').textContent = '▶ Play Sequence';
+    document.getElementById('seqPlayBtn').className   = 'btn-primary btn-wide';
+    document.querySelectorAll('.seq-item').forEach(el => el.className = 'seq-item');
+    clearMeter();
+    showResults();
+    return;
+  }
+
+  const note = seqList[seqIndex];
+  targetMidi = note.midi; smoothed = null;
+  seqResults[seqIndex] = { note, samples: [] };
+  noteStartTs = performance.now();
+
+  // Highlight chips
+  document.querySelectorAll('.seq-item').forEach((el, i) => {
+    el.className = i < seqIndex ? 'seq-item done' : i === seqIndex ? 'seq-item active' : 'seq-item';
+  });
+  setHint(`Note ${seqIndex + 1} / ${seqList.length}  —  sing  ${note.displayName}`);
+  playTone(midiToFreq(note.midi), seqDur * 0.9);
+
+  // Progress bar inside active chip
+  const chip = document.getElementById('sq' + seqIndex);
+  if (chip) {
+    chip.querySelectorAll('.note-prog').forEach(e => e.remove());
+    const wrap = document.createElement('div'); wrap.className = 'note-prog';
+    const bar  = document.createElement('div'); bar.className  = 'note-prog-bar';
+    wrap.appendChild(bar); chip.appendChild(wrap);
+    const start = performance.now(), dur = seqDur * 1000;
+    const tick = now => {
+      const frac = Math.max(0, 1 - (now - start) / dur);
+      bar.style.width = (frac * 100) + '%';
+      if (frac > 0 && seqPlaying) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  seqTimer = setTimeout(() => { seqIndex++; playSeqStep(); }, seqDur * 1000);
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+function classifyCents(absC) {
+  if (absC == null || !isFinite(absC)) return 'n';
+  if (absC <= 15) return 'g';
+  if (absC <= 35) return 'y';
+  return 'r';
+}
+
+function showResults() {
+  if (!seqResults.length) { setHint('No pitch data captured'); return; }
+
+  // Per-note averages
+  const perNote = seqResults.map(r => {
+    if (!r.samples.length) return { note: r.note, avg: null };
+    const sum = r.samples.reduce((a,b) => a + b, 0);
+    return { note: r.note, avg: sum / r.samples.length };
+  });
+
+  // Overall stats
+  const scored = perNote.filter(p => p.avg != null);
+  if (!scored.length) { setHint('No voice detected during sequence'); return; }
+  const overallAvg = scored.reduce((a,p) => a + p.avg, 0) / scored.length;
+  const hitCount   = scored.filter(p => p.avg <= 15).length;
+  const score      = Math.max(0, Math.round(100 - overallAvg * 2)); // 0¢ → 100, 50¢ → 0
+
+  // Grade label
+  const grade =
+    score >= 90 ? 'Excellent' :
+    score >= 75 ? 'Great' :
+    score >= 60 ? 'Good'  :
+    score >= 40 ? 'Keep practising' :
+                  'Try again';
+  const scoreCls = score >= 75 ? 'g' : score >= 50 ? 'y' : 'r';
+
+  // Populate UI
+  const big = document.getElementById('resultScore');
+  big.textContent = score;
+  big.className   = 'score-big ' + scoreCls;
+  document.getElementById('resultGrade').textContent  = grade;
+  document.getElementById('resultAvg').textContent    = '±' + Math.round(overallAvg) + '¢';
+  document.getElementById('resultInTune').textContent = hitCount + ' / ' + perNote.length;
+
+  // Per-note chips
+  const wrap = document.getElementById('resultNotes');
+  wrap.innerHTML = '';
+  perNote.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'res-chip ' + classifyCents(p.avg);
+    const lbl = document.createElement('div'); lbl.textContent = p.note.displayName;
+    const cv  = document.createElement('div'); cv.className = 'rc-cents';
+    cv.textContent = p.avg == null ? '—' : '±' + Math.round(p.avg) + '¢';
+    chip.appendChild(lbl); chip.appendChild(cv);
+    wrap.appendChild(chip);
+  });
+
+  document.getElementById('seqResults').style.display = '';
+  setHint('Sequence complete! Score: ' + score);
+}
+
+function hideResults() {
+  document.getElementById('seqResults').style.display = 'none';
+}
+
+// ── Microphone ────────────────────────────────────────────────────────────────
+async function requestMic() {
+  await startMic();
+}
+function setMicStatus(state, text) {
+  document.getElementById('micDot').className = 'mic-dot' + (state==='live'?' live':state==='error'?' error':'');
+  document.getElementById('micStatusText').textContent = text;
+}
+async function startMic() {
+  try {
+    const ac = getAC(); await ac.resume();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const src = ac.createMediaStreamSource(micStream);
+    analyser  = ac.createAnalyser();
+    analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0;
+    src.connect(analyser);
+    micOn = true; smoothed = null;
+    setMicStatus('live', 'Microphone active — sing away!');
+    document.getElementById('volWrap').style.display = 'block';
+    setHint(appMode === 'single' ? 'Press "New Note" to begin' : 'Build a sequence, then press Play');
+    pitchLoop();
+  } catch (err) {
+    setMicStatus('error', location.protocol === 'file:'
+      ? 'Open via localhost — Safari blocks mic on file://'
+      : 'Mic denied — Safari Settings → Websites → Microphone');
+    console.error(err);
+  }
+}
+
+// ── Pitch loop ────────────────────────────────────────────────────────────────
+function pitchLoop() {
+  if (!micOn) return;
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+
+  let s2 = 0; for (let i = 0; i < buf.length; i++) s2 += buf[i]*buf[i];
+  const rms = Math.sqrt(s2 / buf.length);
+  const vb  = document.getElementById('volBar');
+  vb.style.width      = Math.min(100, rms * 400) + '%';
+  vb.style.background = rms > 0.012 ? 'var(--green)' : 'var(--muted)';
+
+  const freq = detect(buf, audioCtx.sampleRate);
+  if (freq > 0 && targetMidi !== null) {
+    const raw = (freqToMidi(freq) - targetMidi) * 100;
+    smoothed  = smoothed === null ? raw : smoothed * 0.93 + raw * 0.07;
+    updateMeter(Math.round(smoothed), freq);
+
+    // Collect pitch samples during sequence playback (skip first 25% of note while tone plays)
+    if (appMode === 'sequence' && seqPlaying && seqResults[seqIndex]) {
+      const elapsed = performance.now() - noteStartTs;
+      if (elapsed >= seqDur * 1000 * 0.25) {
+        seqResults[seqIndex].samples.push(Math.abs(smoothed));
+      }
+    }
+  } else { clearMeter(); smoothed = null; }
+
+  rafId = requestAnimationFrame(pitchLoop);
+}
+
+// ── Meter ─────────────────────────────────────────────────────────────────────
+function updateMeter(cents, freq) {
+  const abs = Math.abs(cents), cls = abs <= 10 ? 'g' : abs <= 25 ? 'y' : 'r';
+  const needle = document.getElementById('needle');
+  needle.style.left = (50 + Math.max(-50, Math.min(50, cents))) + '%';
+  needle.className  = 'needle vis ' + cls;
+
+  const cv = document.getElementById('centsVal');
+  cv.className   = 'cents-val ' + cls;
+  cv.textContent = abs <= 5 ? '✓ In tune' : (cents > 0 ? `+${cents}¢` : `${cents}¢`);
+
+  const sn = document.getElementById('sungName');
+  sn.textContent = midiToName(Math.round(freqToMidi(freq)));
+  sn.className   = 'sung-name ' + cls;
+  document.getElementById('sungHz').textContent = freq.toFixed(1) + ' Hz';
+
+  if (appMode === 'sequence' && seqPlaying) return;
+  const h = document.getElementById('hint');
+  if (abs <= 10) { h.textContent = '🎯 Right on!'; h.className = 'hint ok'; }
+  else           { h.textContent = cents < 0 ? '↑ Sing higher' : '↓ Sing lower'; h.className = 'hint'; }
+}
+function clearMeter() {
+  document.getElementById('needle').className   = 'needle';
+  document.getElementById('centsVal').className = 'cents-val';
+  document.getElementById('centsVal').textContent = '—';
+  document.getElementById('sungName').textContent = '—';
+  document.getElementById('sungName').className   = 'sung-name';
+  document.getElementById('sungHz').textContent   = '';
+}
+function setHint(msg) { const h = document.getElementById('hint'); h.textContent = msg; h.className = 'hint'; }
+
+// ── Pitch detection ───────────────────────────────────────────────────────────
+function detect(buf, sr) {
+  const SIZE = buf.length;
+  let s2 = 0; for (let i = 0; i < SIZE; i++) s2 += buf[i]*buf[i];
+  if (s2 / SIZE < 0.0003) return -1;
+  const MIN_LAG = Math.floor(sr / 1600), MAX_LAG = Math.min(Math.ceil(sr / 55), SIZE - 1);
+  const c = new Float32Array(MAX_LAG + 1);
+  for (let lag = MIN_LAG; lag <= MAX_LAG; lag++) {
+    let v = 0; const end = SIZE - lag;
+    for (let i = 0; i < end; i++) v += buf[i] * buf[i + lag];
+    c[lag] = v;
+  }
+  let d = MIN_LAG;
+  while (d < MAX_LAG - 1 && c[d] >= c[d+1]) d++;
+  let mv = -1, mp = -1;
+  for (let i = d; i <= MAX_LAG; i++) { if (c[i] > mv) { mv = c[i]; mp = i; } }
+  if (mp <= MIN_LAG || mp >= MAX_LAG || mv / s2 < 0.18) return -1;
+  let T0 = mp;
+  const x1 = c[T0-1], x2 = c[T0], x3 = c[T0+1], dn = x1 - 2*x2 + x3;
+  if (dn < 0) T0 += (x1 - x3) / (2 * dn);
+  const f = sr / T0;
+  return f >= 55 && f <= 1600 ? f : -1;
+}
+
+// ── Init sequence UI ─────────────────────────────────────────────────────────
+selectKey('C');
+renderCofHighlights();
+renderScaleNotes();
+renderSeqZone();
+</script>
+</body>
+</html>
